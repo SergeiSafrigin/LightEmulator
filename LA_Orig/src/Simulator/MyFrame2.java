@@ -97,7 +97,7 @@ public class MyFrame2 extends JFrame implements ActionListener	{
 
 	private Point3D _p1,_p2; // tmp Points for selection
 	private GIS_Lights _map = null;
-	private int NUMBER_OF_PARTICLES = 100;
+	private int NUMBER_OF_PARTICLES = 50;
 	private Particle_Algo _algo = null; 
 	public double _time=0;
 	public Position_State _solution = null;

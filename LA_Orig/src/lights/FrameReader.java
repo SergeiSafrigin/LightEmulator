@@ -162,7 +162,7 @@ public class FrameReader {
 					                    % colors.length]);
 					g2d.fillRect((int) (geometryLight.x + 0.5) + offsetX, (int) (geometryLight.y + 0.5) + offsetY, 5, 5);
 					g2d.drawString(geometryLight.registrationId + "", (int) (geometryLight.x + 0.5) + offsetX, (int) (geometryLight.y + 0.5) + offsetY);
-					g2d.drawString("a="+(int)geometryLight.pitch,(int) (geometryLight.x + 0.5 - 20) + offsetX, (int) (geometryLight.y + 0.5 + 15) + offsetY);
+					g2d.drawString("a="+(int)geometryLight.yaw,(int) (geometryLight.x + 0.5 - 20) + offsetX, (int) (geometryLight.y + 0.5 + 15) + offsetY);
 				}
 			}
 		}
@@ -261,9 +261,10 @@ public class FrameReader {
 		currPitch = frame.getPitch();
 		currRoll = frame.getRoll();
 
-		//fixing yaw for the lab lights map
+		//fixing yaw for the lab lights map		
 		currYaw += yawFix;
-
+		currYaw %= 360;
+		
 		byte[] frameImage = frame.getFrame();
 
 		BufferedImage image = JPEGToBufferedImage(frameImage);
