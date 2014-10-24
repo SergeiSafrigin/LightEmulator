@@ -65,8 +65,8 @@ public class MyFrame2 extends JFrame implements ActionListener	{
 	private static final int PATH_BOX_WIDTH = 200, PATH_BOX_HEIGHT = 200;
 
 	private Cords _pathW2P = new Cords(
-			min,
-			max,
+			new Point3D(-500, -500, -100),
+			new Point3D(500, 500, 300),
 			new Point3D(0, PATH_BOX_HEIGHT, 2.55),
 			new Point3D(PATH_BOX_WIDTH, 0, 2.55)
 			);
@@ -93,7 +93,7 @@ public class MyFrame2 extends JFrame implements ActionListener	{
 	private static final int SHIFT_X = 400, SHIFT_Y = 80;
 
 	//file with recorded frames
-	private String Lights_File="data/lab/11";
+	private String Lights_File="data/lab/3";
 
 	private Point3D _p1,_p2; // tmp Points for selection
 	private GIS_Lights _map = null;
@@ -112,7 +112,7 @@ public class MyFrame2 extends JFrame implements ActionListener	{
 	//	public static String light_map = "data/Light3.txt";
 
 	//lights map
-	public static String light_map = "data/lab/map.csv";
+	public static String light_map = "data/lab/lights_map.csv";
 	public double max_ang_speed = 90; // deg/s
 	public static boolean DEBUG=true;
 	public static double NORM_ERR = 1.0;  // [-2,2] - yaw, [-1,1] pitch
@@ -157,7 +157,7 @@ public class MyFrame2 extends JFrame implements ActionListener	{
 			// Boaz 6/10
 			//Point3D best = _algo.best().get_pos();
 			_particleBestsolution = _algo.best().get_pos();
-			_path.add(new Point3D(_particleBestsolution));
+			_path.add(new Point3D(frameReader.getCurrVisualOdometryLocation()));
 			// double dist1 = _solve.distance3D(_solution.get_pos());
 			//			double dist = _particleBestsolution.distance3D(_solution.get_pos());
 			//			System.out.println("Dist: "+dist+"  pp: "+_particleBestsolution+"   real: "+_solution.get_pos());

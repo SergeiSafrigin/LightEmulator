@@ -1,6 +1,7 @@
 package lights;
 
 import geom3D.Ang_Vector;
+import geom3D.Point3D;
 
 import java.awt.Color;
 import java.awt.Graphics;
@@ -20,8 +21,9 @@ import kcg.core.ImageRotate;
 import kcg.core.filters.BinaryFilter;
 import kcg.core.light.GeometryLight;
 import kcg.core.light.ImageConfig;
-import kcg.core.light.VisualLight;
 import kcg.core.light.ImageConfig.DistanceType;
+import kcg.core.light.Point3d;
+import kcg.core.light.VisualLight;
 import kcg.core.light.filter.LightFilter;
 import kcg.core.light.filter.VisualOdometryFilter;
 import kcg.datarecorder.main.Config;
@@ -61,7 +63,9 @@ public class FrameReader {
 	private int[] currImage;
 	//current frame binary image
 	private int[] currBinaryImage;
-
+	
+	private Point3d currVisualOdometryLocation;
+	
 	ArrayList<VisualLight> visualLights;
 	ArrayList<GeometryLight> geometryLights;
 
@@ -80,12 +84,12 @@ public class FrameReader {
 	private kcg.core.light.Point3d lastLocation = null;
 
 	public FrameReader(String fileName){
-		try {			
+		try {
 			ObjectInputStream in = new ObjectInputStream(new FileInputStream(fileName));	
 			Data data = (Data)in.readObject();
 			foundedFrames = data.getData();
 
-			threshold = 200;
+			threshold = 230;
 			minPixelsForLight = 50;
 			recordConfig = data.getConfig();
 			frameWidth = recordConfig.getPreviewWidth();
@@ -257,6 +261,7 @@ public class FrameReader {
 		i %= foundedFrames.size();
 
 		FrameData frame = foundedFrames.get(i%foundedFrames.size());
+		
 		currYaw = frame.getYaw();
 		currPitch = frame.getPitch();
 		currRoll = frame.getRoll();
@@ -278,6 +283,8 @@ public class FrameReader {
 				lightFilter, currBinaryImage, frameWidth, frameHeight, minPixelsForLight);
 
 		geometryLights = odometryFilter.process(visualLights, currYaw, currPitch, currRoll);
+		
+		currVisualOdometryLocation = odometryFilter.getLocationInCm();
 
 		return geometryLightsToAngVectors(geometryLights);
 	}
@@ -326,5 +333,9 @@ public class FrameReader {
 
 	public int getFrameHeight() {
 		return frameHeight;
+	}
+
+	public Point3D getCurrVisualOdometryLocation() {
+		return new Point3D(currVisualOdometryLocation.x, currVisualOdometryLocation.y, currVisualOdometryLocation.z);
 	}
 }
