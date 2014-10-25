@@ -50,7 +50,7 @@ public class FrameReader {
 			Color.BLUE, Color.YELLOW, Color.CYAN,
 			Color.ORANGE, Color.MAGENTA, Color.PINK };
 
-	//IMPORTANT yaw need to be fixed for the lab lights map
+	//TODO IMPORTANT yaw need to be fixed for the lab lights map
 	private float yawFix = 26.50363f;
 
 	//current frame yaw
@@ -63,9 +63,9 @@ public class FrameReader {
 	private int[] currImage;
 	//current frame binary image
 	private int[] currBinaryImage;
-	
+
 	private Point3d currVisualOdometryLocation;
-	
+
 	ArrayList<VisualLight> visualLights;
 	ArrayList<GeometryLight> geometryLights;
 
@@ -133,7 +133,7 @@ public class FrameReader {
 			g2d.drawImage(currentImage, null, offsetX, offsetY);
 		}
 	}
-	
+
 	public void drawLightEdges(int width, int height, int offsetX, int offsetY, Graphics g) {
 		Graphics2D g2d = (Graphics2D) g;
 
@@ -160,13 +160,22 @@ public class FrameReader {
 
 			for (int i = 0; i < geometryLights.size(); i++) {
 				GeometryLight geometryLight = geometryLights.get(i);
-				//TODO maybe change the 10 to another number
-				if (geometryLight.pitch > 10 && geometryLight.unregisteredFrames == 0) {
-					g2d.setColor(colors[geometryLight.registrationId
-					                    % colors.length]);
+				if (geometryLight.pitch > 0 && geometryLight.unregisteredFrames == 0) {
+					Color color;
+					if (geometryLight.mainLight) {
+						color = Color.WHITE;
+
+					} else
+						color = colors[geometryLight.registrationId
+						               % colors.length];
+
+					g2d.setColor(color);
 					g2d.fillRect((int) (geometryLight.x + 0.5) + offsetX, (int) (geometryLight.y + 0.5) + offsetY, 5, 5);
+
+					if (geometryLight.mainLight) {
+						g2d.drawString("(m)", (int) (geometryLight.x + 0.5) + offsetX-20, (int) (geometryLight.y + 0.5) + offsetY);
+					}
 					g2d.drawString(geometryLight.registrationId + "", (int) (geometryLight.x + 0.5) + offsetX, (int) (geometryLight.y + 0.5) + offsetY);
-					g2d.drawString("a="+(int)geometryLight.yaw,(int) (geometryLight.x + 0.5 - 20) + offsetX, (int) (geometryLight.y + 0.5 + 15) + offsetY);
 				}
 			}
 		}
@@ -261,7 +270,7 @@ public class FrameReader {
 		i %= foundedFrames.size();
 
 		FrameData frame = foundedFrames.get(i%foundedFrames.size());
-		
+
 		currYaw = frame.getYaw();
 		currPitch = frame.getPitch();
 		currRoll = frame.getRoll();
@@ -269,7 +278,7 @@ public class FrameReader {
 		//fixing yaw for the lab lights map		
 		currYaw += yawFix;
 		currYaw %= 360;
-		
+
 		byte[] frameImage = frame.getFrame();
 
 		BufferedImage image = JPEGToBufferedImage(frameImage);
@@ -283,7 +292,7 @@ public class FrameReader {
 				lightFilter, currBinaryImage, frameWidth, frameHeight, minPixelsForLight);
 
 		geometryLights = odometryFilter.process(visualLights, currYaw, currPitch, currRoll);
-		
+
 		currVisualOdometryLocation = odometryFilter.getLocationInCm();
 
 		return geometryLightsToAngVectors(geometryLights);
@@ -297,7 +306,7 @@ public class FrameReader {
 
 		for(GeometryLight light: geometryLights){			
 			//TODO maybe change this number
-			if (light.pitch > 10)
+			if (light.pitch > 0)
 				lts.add(new Ang_Vector(light.yaw, light.pitch));
 		}
 

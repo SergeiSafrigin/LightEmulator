@@ -65,8 +65,8 @@ public class MyFrame2 extends JFrame implements ActionListener	{
 	private static final int PATH_BOX_WIDTH = 200, PATH_BOX_HEIGHT = 200;
 
 	private Cords _pathW2P = new Cords(
-			new Point3D(-500, -500, -100),
-			new Point3D(500, 500, 300),
+			new Point3D(-1500, -1500, -100),
+			new Point3D(1500, 1500, 300),
 			new Point3D(0, PATH_BOX_HEIGHT, 2.55),
 			new Point3D(PATH_BOX_WIDTH, 0, 2.55)
 			);
@@ -93,7 +93,7 @@ public class MyFrame2 extends JFrame implements ActionListener	{
 	private static final int SHIFT_X = 400, SHIFT_Y = 80;
 
 	//file with recorded frames
-	private String Lights_File="data/lab/3";
+	private String Lights_File="data/lab/1";
 
 	private Point3D _p1,_p2; // tmp Points for selection
 	private GIS_Lights _map = null;
@@ -149,6 +149,11 @@ public class MyFrame2 extends JFrame implements ActionListener	{
 	}
 
 	private void step(double dt) {
+		if (_time <= 1) {
+			_time++;
+			return;
+		}
+		
 		ArrayList<Ang_Vector> lts = frameReader.step((int)_time);
 		
 		if(lts.size()>=2) {
@@ -168,78 +173,6 @@ public class MyFrame2 extends JFrame implements ActionListener	{
 
 		_time = _time + 1;
 	}
-
-	//	private Point3D simpleTest( ArrayList<Ang_Vector> lts) {
-	//		Point3D l0=null, l1=null, v0=null, v1 = null;
-	//		for(int i=0;l1==null && i<_map.size();i++) {
-	//			GIS_Light c = _map.get_lights().get(i);
-	//			if(c.is_vis()) {
-	//				Point3D t = c.getCenter();
-	//				if(l0==null) l0=t;
-	//				else l1=t;
-	//			}
-	//		}
-	//		v0 = getPoint(l0,lts.get(0)); v1 = getPoint(l1,lts.get(1));
-	//		Point3D pp0 = Geom_Algo.CenterOfMidSegmentBetweenTwoLines(l0, v0, l1, v1);
-	//		v0 = getPoint(l0,lts.get(1)); v1 = getPoint(l1,lts.get(0));
-	//		Point3D pp1 = Geom_Algo.CenterOfMidSegmentBetweenTwoLines(l0, v0, l1, v1);
-	//
-	//		Point3D ans = pp0;
-	//		if(_solution.get_pos().distance3D(pp0)>_solution.get_pos().distance3D(pp1)) {
-	//			ans = pp1;
-	//		}
-	//		return ans;
-	//	}
-
-	//	private Point3D getPoint(Point3D p, Ang_Vector v) {
-	//		Point3D ans = new Point3D(p);
-	//		Vector3D vec = v.toVector();
-	//		ans.add(vec.toPoint3D());
-	//		return ans;
-	//	}
-
-	//	private void move() {
-	//		Point3D p = _solution.get_pos();
-	//		double r = 0.2;
-	//		double x = rand(-r,r);
-	//		double y = rand(-r,r);
-	//		double z = rand(-r,r);		
-	//
-	//		if(p.z()<=0.5) z=Math.abs(z); if(p.z()>=1.5) z=-Math.abs(z);
-	//		if(p.x()<= r + min.x()) x=Math.abs(x); if(p.x()>= max.x()-r) x=-Math.abs(x);
-	//		if(p.y() <= r + min.y()) y=Math.abs(y); if(p.y()>= max.y()-r) y=-Math.abs(y);
-	//
-	//		p.add(x, y, z);
-	//
-	//		_solution.set_pos(p);
-	//		Ang_Vector av = _solution.get_ori();
-	//		double da = rand(-3,5);
-	//		double de = rand(-2,2);
-	//		av._azm+=da;
-	//		av._elev+=de;
-	//		if( av._azm<0) { av._azm+=360;}
-	//		if( av._azm>=360) { av._azm-=360;}
-	//		if(av._elev>=90) {av._elev=45;}
-	//		if(av._elev<=-10) {av._elev=0;}
-	//
-	//		_solution.set_ori(av);
-	//	}
-
-	//	private static double rand(double min, double max){
-	//		double d = Math.random();
-	//		double dx = max-min;
-	//		return min+dx*d;
-	//	}
-	//	
-	//	private static double azmDiff(double a1, double a2) {
-	//		double max = Math.max(a1, a2);
-	//		double min = Math.min(a1, a2);
-	//		double da = max-min;
-	//		if(da>=180) {
-	//			da = Math.abs((360-max)-min);
-	//		}
-	//		return da;
-	//	}
 
 	public void paint(Graphics g) { 
 		g.setColor(Color.WHITE);
