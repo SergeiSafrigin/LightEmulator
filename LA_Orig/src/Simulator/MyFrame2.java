@@ -22,23 +22,12 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.awt.image.BufferedImage;
-import java.awt.image.DataBufferInt;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.ObjectInputStream;
 import java.util.ArrayList;
 
 import javax.swing.JFrame;
 
-import kcg.core.light.GeometryLight;
 import kcg.core.light.ImageConfig;
-import kcg.core.light.ImageConfig.DistanceType;
-import kcg.core.light.filter.LightFilter;
-import kcg.core.light.filter.VisualOdometryFilter;
-import kcg.datarecorder.main.Config;
-import kcg.datarecorder.recorder.Data;
-import kcg.datarecorder.recorder.FrameData;
 import lights.FrameReader;
 import Light_Algorithm.Particle;
 import Light_Algorithm.Particle_Algo;
@@ -50,13 +39,11 @@ this class is the window manager of the simple IndoogGo Light algorithm simulato
 including all GUI parts: paint method, data Editable (Drawable container),GUI, mouse manager,
  */
 
-public class MyFrame2 extends JFrame implements ActionListener	{ 
-
-	public static void main(String[] a) {
-		System.out.println("InDoorGo Simulation: K&CG");
-		MyFrame2 win = new MyFrame2();
-		win.start();
-	}
+public class MyFrame2 extends JFrame implements ActionListener	{ 	
+	//lights map
+		private static String lights_map = "data/lab/lights_map.csv";
+		//file with recorded frames
+		private static String record_file = "data/lab/3";
 
 	//List of points that represent the path taken
 	private ArrayList<Point3D> _path;
@@ -92,9 +79,6 @@ public class MyFrame2 extends JFrame implements ActionListener	{
 	//GUI - shift to center the room
 	private static final int SHIFT_X = 400, SHIFT_Y = 80;
 
-	//file with recorded frames
-	private String Lights_File="data/lab/1";
-
 	private Point3D _p1,_p2; // tmp Points for selection
 	private GIS_Lights _map = null;
 	private int NUMBER_OF_PARTICLES = 50;
@@ -103,21 +87,15 @@ public class MyFrame2 extends JFrame implements ActionListener	{
 	public Position_State _solution = null;
 	public Point3D _solve, _particleBestsolution;
 
-	public static double max_speed = 2.0; // m/s
-
-	public static double min_elev = -0, max_elev = 50;
-	public static double min_z = 0.5, max_z = 1.5;
-	public static int fps=25;
-	public static double sim_time = 60*1000; // mili-seconds
-	//	public static String light_map = "data/Light3.txt";
-
-	//lights map
-	public static String light_map = "data/lab/lights_map.csv";
-	public double max_ang_speed = 90; // deg/s
-	public static boolean DEBUG=true;
-	public static double NORM_ERR = 1.0;  // [-2,2] - yaw, [-1,1] pitch
-	// ****************************************
-
+	
+	
+	public static void main(String[] a) {
+		System.out.println("InDoorGo Simulation: K&CG");
+		MyFrame2 win = new MyFrame2();
+		win.start();
+	}
+	
+	
 	// *** text area ***
 	public MyFrame2() {
 		this.setTitle("K&CG - IndoorGo Lights Simulator");
@@ -133,9 +111,9 @@ public class MyFrame2 extends JFrame implements ActionListener	{
 		_p1=null;
 		_time = 0;
 
-		frameReader = new FrameReader(Lights_File);
+		frameReader = new FrameReader(record_file);
 		
-		_map = MapParser.parse(light_map);
+		_map = MapParser.parse(lights_map);
 
 		_path = new ArrayList<Point3D>();
 
@@ -144,8 +122,6 @@ public class MyFrame2 extends JFrame implements ActionListener	{
 		_solution = new Position_State(start);
 		_algo.init(min,max,NUMBER_OF_PARTICLES);
 		_solve = null;
-		//	_algo.get(0).update(start, 0.99, 40);
-
 	}
 
 	private void step(double dt) {
@@ -157,18 +133,9 @@ public class MyFrame2 extends JFrame implements ActionListener	{
 		ArrayList<Ang_Vector> lts = frameReader.step((int)_time);
 		
 		if(lts.size()>=2) {
-			//_solve = simpleTest(lts);
 			_algo.update(lts, _map);
-			// Boaz 6/10
-			//Point3D best = _algo.best().get_pos();
 			_particleBestsolution = _algo.best().get_pos();
 			_path.add(new Point3D(frameReader.getCurrVisualOdometryLocation()));
-			// double dist1 = _solve.distance3D(_solution.get_pos());
-			//			double dist = _particleBestsolution.distance3D(_solution.get_pos());
-			//			System.out.println("Dist: "+dist+"  pp: "+_particleBestsolution+"   real: "+_solution.get_pos());
-			//Particle best = _algo.best();
-			//	double dist = best.get_pos().distance3D(_solution.get_pos());
-			//	if(DEBUG) System.out.println(", "+best.get_pos()+", ERR: "+dist+"  w: "+best.get_w());
 		}
 
 		_time = _time + 1;
@@ -451,10 +418,8 @@ public class MyFrame2 extends JFrame implements ActionListener	{
 
 	class keyboardManeger extends KeyAdapter{
 		public void keyPressed(KeyEvent e) {
-			if( _stage == Const.Move1 ){
-				step(1);
-				repaint();
-			}
+			step(1);
+			repaint();
 		}
 	}
 

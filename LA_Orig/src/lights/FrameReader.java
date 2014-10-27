@@ -51,7 +51,9 @@ public class FrameReader {
 			Color.ORANGE, Color.MAGENTA, Color.PINK };
 
 	//TODO IMPORTANT yaw need to be fixed for the lab lights map
-	private float yawFix = 26.50363f;
+//	private float yawFix = 26.50363f;
+	//fix for k/12
+	private float yawFix = -1;
 
 	//current frame yaw
 	private float currYaw;
@@ -90,7 +92,7 @@ public class FrameReader {
 			foundedFrames = data.getData();
 
 			threshold = 230;
-			minPixelsForLight = 50;
+			minPixelsForLight = 30;
 			recordConfig = data.getConfig();
 			frameWidth = recordConfig.getPreviewWidth();
 			frameHeight = recordConfig.getPreviewHeight();
@@ -172,9 +174,26 @@ public class FrameReader {
 					g2d.setColor(color);
 					g2d.fillRect((int) (geometryLight.x + 0.5) + offsetX, (int) (geometryLight.y + 0.5) + offsetY, 5, 5);
 
+					
+					
 					if (geometryLight.mainLight) {
+						double x = geometryLight.location.x - odometryFilter.getLocationInCm().x;
+						double y = geometryLight.location.y - odometryFilter.getLocationInCm().y;
+						double z = geometryLight.location.z - odometryFilter.getLocationInCm().z;
+						
+						x /= 100;
+						y /= 100;
+						z /= 100;
+						
+						String x1 = String.format("%.2f", x);
+						String y1 = String.format("%.2f", y);
+						String z1 = String.format("%.2f", z);
+						
+						g2d.drawString("x="+x1+",y="+y1+",z="+z1, (int) (geometryLight.x + 0.5) + offsetX-60, (int) (geometryLight.y + 0.5) + offsetY + 20);
+						g2d.drawString("y="+(int)geometryLight.yaw+",p="+(int)geometryLight.pitch, (int) (geometryLight.x + 0.5) + offsetX-30, (int) (geometryLight.y + 0.5) + offsetY + 30);						
 						g2d.drawString("(m)", (int) (geometryLight.x + 0.5) + offsetX-20, (int) (geometryLight.y + 0.5) + offsetY);
 					}
+
 					g2d.drawString(geometryLight.registrationId + "", (int) (geometryLight.x + 0.5) + offsetX, (int) (geometryLight.y + 0.5) + offsetY);
 				}
 			}
@@ -274,10 +293,15 @@ public class FrameReader {
 		currYaw = frame.getYaw();
 		currPitch = frame.getPitch();
 		currRoll = frame.getRoll();
-
-		//fixing yaw for the lab lights map		
+		
+		
+		//yaw room fix
+		if (yawFix == -1) {
+			yawFix = 360 - currYaw;
+		}
+		
 		currYaw += yawFix;
-		currYaw %= 360;
+		currYaw %= 360;		
 
 		byte[] frameImage = frame.getFrame();
 
@@ -294,7 +318,7 @@ public class FrameReader {
 		geometryLights = odometryFilter.process(visualLights, currYaw, currPitch, currRoll);
 
 		currVisualOdometryLocation = odometryFilter.getLocationInCm();
-
+		
 		return geometryLightsToAngVectors(geometryLights);
 	}
 
