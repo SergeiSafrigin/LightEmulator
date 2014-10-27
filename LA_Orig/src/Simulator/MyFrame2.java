@@ -132,11 +132,11 @@ public class MyFrame2 extends JFrame implements ActionListener	{
 		
 		ArrayList<Ang_Vector> lts = frameReader.step((int)_time);
 		
-		if(lts.size()>=2) {
-			_algo.update(lts, _map);
-			_particleBestsolution = _algo.best().get_pos();
+		_algo.update(lts, _map);
+		_particleBestsolution = _algo.best().get_pos();
+		
+		if (_time % 5 == 0)
 			_path.add(new Point3D(frameReader.getCurrVisualOdometryLocation()));
-		}
 
 		_time = _time + 1;
 	}
@@ -156,7 +156,7 @@ public class MyFrame2 extends JFrame implements ActionListener	{
 		frameReader.drawImage(currImage, frameWidth, frameHeight, 20, 80, getGraphics());
 		frameReader.drawLightEdges(frameWidth, frameHeight, 20, frameHeight+100, getGraphics());
 		frameReader.drawGeometryLights(20, frameHeight+100, getGraphics());
-
+		
 		drawPath();
 
 		for(int i=0; i<_map.size(); i++) {
