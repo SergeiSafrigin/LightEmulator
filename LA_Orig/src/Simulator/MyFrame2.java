@@ -306,6 +306,9 @@ public class MyFrame2 extends JFrame implements ActionListener	{
 			startingPointSelected = false;
 			screenShift = null;
 			_path.clear();
+			frameReader.step(0);
+			Point3D start = new Point3D(max.x - min.x, max.y - min.y, max.z - min.z);
+			_solution = new Position_State(start);
 			_time = 0;
 			repaint();
 		}
