@@ -2,13 +2,13 @@ package Simulator;
 
 import geom3D.Ang_Vector;
 import geom3D.Point3D;
+import geom3D.Segment3D;
 import geom3D.Vector3D;
 import geomLights.GIS_Light;
 import geomLights.GIS_Lights;
 
 import java.awt.BasicStroke;
 import java.awt.Color;
-import java.awt.FileDialog;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Menu;
@@ -22,7 +22,6 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.io.File;
 import java.util.ArrayList;
 
 import javax.swing.JFrame;
@@ -40,62 +39,48 @@ including all GUI parts: paint method, data Editable (Drawable container),GUI, m
  */
 
 public class MyFrame2 extends JFrame implements ActionListener	{ 	
+	private static final long serialVersionUID = -2502427053989256885L;
+	private static final float ROOM_OFFSET = 0.2f;
+	
 	//lights map
-		private static String lights_map = "data/lab/lights_map.csv";
-		//file with recorded frames
-		private static String record_file = "data/lab/3";
+	private static String lights_map = "data/lab/lights_map.csv";
+	//file with recorded frames
+	private static String record_file = "data/lab/3";
 
 	//List of points that represent the path taken
 	private ArrayList<Point3D> _path;
-
-	//GUI - Path box metrics
-	private static final int PATH_BOX_WIDTH = 200, PATH_BOX_HEIGHT = 200;
-
-	private Cords _pathW2P = new Cords(
-			new Point3D(-1500, -1500, -100),
-			new Point3D(1500, 1500, 300),
-			new Point3D(0, PATH_BOX_HEIGHT, 2.55),
-			new Point3D(PATH_BOX_WIDTH, 0, 2.55)
-			);
 
 	private FrameReader frameReader;
 
 	private static final int ROOM_WIDTH = 500;
 	private static final int ROOM_HEIGHT = 500;
 
-	public static Point3D min = new Point3D(0, 2, 2.55);
-	public static Point3D max = new Point3D(5.2, 10, 2.55);
+	private Point3D min;
+	private Point3D max;
 
-	private Cords W2P = new Cords(
-			min,
-			max,
-			new Point3D(0, ROOM_HEIGHT, 2.55),
-			new Point3D(ROOM_WIDTH, 0, 2.55)
-			);
-
-	private int _ink;
-	private int _stage;
+	private Cords W2P;
 
 	//GUI - shift to center the room
 	private static final int SHIFT_X = 400, SHIFT_Y = 80;
 
-	private Point3D _p1,_p2; // tmp Points for selection
 	private GIS_Lights _map = null;
-	private int NUMBER_OF_PARTICLES = 50;
+	private int NUMBER_OF_PARTICLES = 100;
 	private Particle_Algo _algo = null; 
-	public double _time=0;
-	public Position_State _solution = null;
-	public Point3D _solve, _particleBestsolution;
+	private double _time=0;
+	private Position_State _solution = null;
+	private Point3D _solve, _particleBestsolution;
+	
+	private Point3D screenShift;
+	private float lastTouchCoordX, lastTouchCoordY;
+	private boolean recordStartingPoint = false;
+	private boolean startingPointSelected = false;
 
-	
-	
 	public static void main(String[] a) {
 		System.out.println("InDoorGo Simulation: K&CG");
 		MyFrame2 win = new MyFrame2();
 		win.start();
 	}
-	
-	
+
 	// *** text area ***
 	public MyFrame2() {
 		this.setTitle("K&CG - IndoorGo Lights Simulator");
@@ -106,37 +91,38 @@ public class MyFrame2 extends JFrame implements ActionListener	{
 	}
 
 	private void init() {
-		_stage = Const.Gen; 
-		_ink = Const.blue;
-		_p1=null;
 		_time = 0;
-
-		frameReader = new FrameReader(record_file);
 		
 		_map = MapParser.parse(lights_map);
-
+		
+		setMinAndMaxPoints();
+		W2P = new Cords(min, max, new Point3D(0, ROOM_HEIGHT, 2.55), new Point3D(ROOM_WIDTH, 0, 2.55));
+		
+		frameReader = new FrameReader(record_file);
+		frameReader.step(0);
+		
 		_path = new ArrayList<Point3D>();
-
-		_algo = new Particle_Algo(NUMBER_OF_PARTICLES);
-		Point3D start = new Point3D(2.6, 6, 1);
+		
+		Point3D start = new Point3D(max.x - min.x, max.y - min.y, max.z - min.z);
 		_solution = new Position_State(start);
+		
+		_algo = new Particle_Algo(NUMBER_OF_PARTICLES);
 		_algo.init(min,max,NUMBER_OF_PARTICLES);
 		_solve = null;
 	}
 
-	private void step(double dt) {
+	private void step() {
 		if (_time <= 1) {
 			_time++;
 			return;
 		}
-		
+
 		ArrayList<Ang_Vector> lts = frameReader.step((int)_time);
-		
+
 		_algo.update(lts, _map);
 		_particleBestsolution = _algo.best().get_pos();
 		
-		if (_time % 5 == 0)
-			_path.add(new Point3D(frameReader.getCurrVisualOdometryLocation()));
+		addLocationToPath(frameReader.getCurrVisualOdometryLocation());
 
 		_time = _time + 1;
 	}
@@ -148,15 +134,15 @@ public class MyFrame2 extends JFrame implements ActionListener	{
 		g.clearRect(SHIFT_X, SHIFT_Y, ROOM_WIDTH, ROOM_HEIGHT);
 		drawFrame(g);
 		g.setColor(Color.orange);
-		
+
 		int[] currImage = frameReader.getCurrImage();
 		int frameWidth = frameReader.getFrameWidth();
 		int frameHeight = frameReader.getFrameHeight();
-		
+
 		frameReader.drawImage(currImage, frameWidth, frameHeight, 20, 80, getGraphics());
 		frameReader.drawLightEdges(frameWidth, frameHeight, 20, frameHeight+100, getGraphics());
 		frameReader.drawGeometryLights(20, frameHeight+100, getGraphics());
-		
+
 		drawPath();
 
 		for(int i=0; i<_map.size(); i++) {
@@ -167,15 +153,13 @@ public class MyFrame2 extends JFrame implements ActionListener	{
 			int x1 = (int)p1.x();
 			int y1 = (int)p1.y();
 			int rad = 10;
-			//			if(p.is_vis())
-			g.fillOval(SHIFT_X + x1-rad, SHIFT_Y + y1-rad,2*rad ,2*rad);
-			//			else
-			//				g.drawOval(SHIFT_X + x1-rad, SHIFT_Y + y1-rad,2*rad ,2*rad);
-		}
 
+			g.fillOval(SHIFT_X + x1-rad, SHIFT_Y + y1-rad,2*rad ,2*rad);
+		}
+		
 		if(_solution !=null)
 			drawSolution(_solution, g);
-
+		
 		if(_algo!=null)
 			drawParticles(g);
 
@@ -203,23 +187,7 @@ public class MyFrame2 extends JFrame implements ActionListener	{
 		g.setColor(Color.BLUE);
 		drawPoint(best.get_pos(),12, false,g);
 	}
-
-	private void setcolor(int c, Graphics g) {
-		if(c<20) g.setColor(Color.white);
-		else if(c<40) g.setColor(Color.yellow);
-		else if(c<70) g.setColor(Color.orange);
-		else if(c<100) g.setColor(Color.red);
-		else if(c<150) g.setColor(Color.CYAN);
-		else if(c<180) g.setColor(Color.blue);
-		else if(c<210) g.setColor(Color.green);
-		else g.setColor(Color.black);
-	}
-
-	private void drawFrame(Graphics g) {
-		g.setColor(Color.black);
-		g.drawRect(SHIFT_X, SHIFT_Y, ROOM_WIDTH, ROOM_HEIGHT);
-	}
-
+	
 	private void drawSolution(Position_State pos, Graphics g) {
 		g.setColor(Color.RED);
 		//		Point3D cen = pos.get_pos();
@@ -238,6 +206,22 @@ public class MyFrame2 extends JFrame implements ActionListener	{
 			drawLine(cen, a1,g);
 			drawLine(cen, b1,g);
 		}
+	}
+
+	private void setcolor(int c, Graphics g) {
+		if(c<20) g.setColor(Color.white);
+		else if(c<40) g.setColor(Color.yellow);
+		else if(c<70) g.setColor(Color.orange);
+		else if(c<100) g.setColor(Color.red);
+		else if(c<150) g.setColor(Color.CYAN);
+		else if(c<180) g.setColor(Color.blue);
+		else if(c<210) g.setColor(Color.green);
+		else g.setColor(Color.black);
+	}
+
+	private void drawFrame(Graphics g) {
+		g.setColor(Color.black);
+		g.drawRect(SHIFT_X, SHIFT_Y, ROOM_WIDTH, ROOM_HEIGHT);
 	}
 
 	private void drawLine(Point3D pos, Vector3D ori, Graphics g){
@@ -275,231 +259,170 @@ public class MyFrame2 extends JFrame implements ActionListener	{
 		else
 			g.fillOval(SHIFT_X + x-rad, SHIFT_Y + y-rad,rad*2 ,rad*2);
 	}
-	public void start() {	
-		this.show(); 
-		Dialog();}
+	
+	private void start() {	
+		show(); 
+		dialog();
+	}
 
 
-	public void Dialog()
-	{  MenuBar mbar = new MenuBar();
+	private void dialog() {
+		MenuBar menuBar = new MenuBar();
 
-	Menu m = new Menu("File");
-	MenuItem m1;
-	m1 = new MenuItem("Open");
-	m1.addActionListener(this);
-	m.add(m1);            
-	m1 = new MenuItem("Save");
-	m1.addActionListener(this);
-	m.add(m1); 
-	m1 = new MenuItem("PROJ_DIR");
-	m1.addActionListener(this);
-	m.add(m1); 
-	m1 = new MenuItem("Load_Image");
-	m1.addActionListener(this);
-	m.add(m1); 
-	MenuItem m6 = new MenuItem("Clear");
-	m6.addActionListener(this);
-	m.add(m6);        
-	MenuItem m2 = new MenuItem("Exit");
-	m2.addActionListener(this);
-	m.add(m2);            
-	mbar.add(m);
+		Menu menu = new Menu("Menu");
+		
+		MenuItem startPoint;
+		startPoint = new MenuItem("Select Starting Point");
+		startPoint.addActionListener(this);
+		
+		menu.add(startPoint);
+		
+		MenuItem clearPath = new MenuItem("Clear Path");
+		clearPath.addActionListener(this);
+		menu.add(clearPath);
+		
+		MenuItem reset = new MenuItem("Reset");
+		reset.addActionListener(this);
+		menu.add(reset);
+		
+		menuBar.add(menu);
 
-	m = new Menu("Input");
-	MenuItem m3 = new MenuItem("WayPoint");
-	m3.addActionListener(this);
-	m.add(m3);            
-	m3 = new MenuItem("Obstacle");
-	m3.addActionListener(this);
-	m.add(m3);  
-	mbar.add(m);
-
-	m = new Menu("Run");
-	m1 = new MenuItem("Mission1");
-	m1.addActionListener(this);
-	m.add(m1); 
-	m1 = new MenuItem("Mission2");
-	m1.addActionListener(this);
-	m.add(m1); 
-	mbar.add(m);
-
-	m = new Menu("Edit");         
-	m1 = new MenuItem("Delete");
-	m1.addActionListener(this);
-	m.add(m1);  
-	m1 = new MenuItem("Red");
-	m1.addActionListener(this);
-	m.add(m1);  
-	m1 = new MenuItem("Blue");
-	m1.addActionListener(this);
-	m.add(m1);  
-	m1 = new MenuItem("Fill");
-	m1.addActionListener(this);
-	m.add(m1);  
-	m1 = new MenuItem("Empty");
-	m1.addActionListener(this);
-	m.add(m1);   
-
-	m1 = new MenuItem("Info");
-	m1.addActionListener(this);
-	m.add(m1);  
-	mbar.add(m);   	
-
-	setMenuBar(mbar);	
-	this.addMouseListener(new mouseManeger());
-	this.addKeyListener(new keyboardManeger());
+		setMenuBar(menuBar);	
+		addMouseListener(new MouseManeger());
+		addKeyListener(new KeyboardManeger());
 	}
 
 	public void actionPerformed(ActionEvent evt) {
 		String arg = evt.getActionCommand();
-		if (arg.equals("Open"))
-			openProj();
-		//   else if (arg.equals("Save")) saveAll();
-		//  else if (arg.equals("PROJ_DIR")) this.chooseDir();
-		// else if (arg.equals("Load_Image")) this.chooseDir();
-
-		else if(arg.equals("Clear")) {
-			init();
+		if (arg.equals("Select Starting Point"))
+			recordStartingPoint = true;
+		else if (arg.equals("Clear Path")) {
+			startingPointSelected = false;
+			screenShift = null;
+			_path.clear();
 			repaint();
-		} else if(arg.equals("Exit"))
-			System.exit(209);
-		else if(arg.equals("WayPoint"))
-			_stage = Const.Circle1;
-		else if(arg.equals("Obstacle"))
-			_stage = Const.Rect1;
-		else if(arg.equals("Red")) 
-			_ink = Const.red;
-		else if(arg.equals("Blue"))  
-			_ink = Const.blue;
-		else if(arg.equals("Mission1")) {  
-			//_algo1.startMission(1);
-			this._stage = Const.Move1;
-		}
-		else if(arg.equals("Mission2")) {  
-			//	_algo1.startMission(2);
-			this._stage = Const.Move1;
-		}
-	}
-
-	// ********** Private methodes (open,save...) ********
-
-	private void openProj()  {
-		_stage = Const.Gen;
-		init();
-		FileDialog d = new FileDialog(this,"Project file loader", FileDialog.LOAD);
-		d.show();
-		String dr = d.getDirectory();
-		String fi = d.getFile();
-		String dir = dr;
-		try{
-			//_ps = new WayPoints(dir+"PROJ_wps.txt");
-			//_obs = new Obstacles(dir+"PROJ_obs.txt");
-			File f = new File(dir+"PROJ.png");
-			if(f.exists()) {
-				//        image = ImageIO.read(new File(dir+"PROJ.png"));
-			}
-			System.out.println("*** load Proj: "+d);
+		} else if (arg.equals("Reset")) {
+			recordStartingPoint = false;
+			startingPointSelected = false;
+			screenShift = null;
+			_path.clear();
+			_time = 0;
 			repaint();
 		}
-		catch(Exception e) {e.printStackTrace();}
-	}
-	private void openMapFile()  {
-		_stage = Const.Gen;
-		FileDialog d = new FileDialog(this,"Open text file", FileDialog.LOAD);
-		d.show();
-		String dr = d.getDirectory();
-		String fi = d.getFile();
-		if (fi != null) {
-			//	this.mapName = dr+fi;
-			init();
-			System.out.println("*** should load map + init: "+dr+fi);
-		}
 	}
 
-	class keyboardManeger extends KeyAdapter{
+	class KeyboardManeger extends KeyAdapter{
 		public void keyPressed(KeyEvent e) {
-			step(1);
-			repaint();
+			if (startingPointSelected) {
+				step();
+				repaint();
+			}
 		}
 	}
 
-	class mouseManeger extends MouseAdapter{   // inner class!!										 	
+	class MouseManeger extends MouseAdapter{   // inner class!!										 	
 		public void mousePressed(MouseEvent e) {
-			Graphics g = getGraphics();
-			int xx = e.getX();
-			int yy = e.getY();
-
-			int len =0; 
-			switch(_stage) {
-			case (Const.Gen):{
-				break;	
-			}				
-
-			case (Const.Circle1): {	
-				_p1 = new Point3D(xx,yy,0);
-				_stage = Const.Circle2;
-				break;
-			}
-			case (Const.Circle2): {
-
-				_stage = Const.Circle1;
+			if (recordStartingPoint) {
+				lastTouchCoordX = e.getX();
+				lastTouchCoordY = e.getY();
+				recordStartingPoint = false;
+				startingPointSelected = true;
+				_path.clear();
+				_algo.init(min, max, NUMBER_OF_PARTICLES);
 				repaint();
-				break;
-			}		
-			case (Const.Rect1): {	
-				_p1 = new Point3D(xx,yy,0);
-				_stage = Const.Rect2;
-				break;
-			}
-			case (Const.Rect2): {	
-				Point3D p2 = new Point3D(xx,yy,0);
-				Point3D w1 = Cords.W2P().s2w(_p1);
-				Point3D w2 = Cords.W2P().s2w(p2);
-				//	Obstacle obs = new Obstacle(w1,w2);
-				//	Obstacle obs = new Obstacle(_p1,p2);
-				//	_obs.add(obs);
-				_stage = Const.Rect1;
-				repaint();
-				break;
-			}		
-			case (Const.Move1): {	
-				step(1);
-				repaint();
-				break;
-			}
-			////////////////		
 			}
 		}
+	}
+	
+	private void addLocationToPath(Point3D worldLocation) {
+		worldLocation.divideByScalar(100);
+		Point3D screenLocation = W2P.w2s(worldLocation);
+		if (screenShift == null) {
+			screenShift = new Point3D(screenLocation.x - lastTouchCoordX, screenLocation.y - lastTouchCoordY, 0);
+		}
+		
+		screenLocation.substract(screenShift);
+		_path.add(screenLocation);
 	}
 
 	public void drawPath(){
 		Graphics2D g2d = (Graphics2D) getGraphics();
 
-		Point3D prevP = null;
-
-		int shiftX = 1000;
-		int shiftY = 200;
-
-		g2d.clearRect(shiftX, shiftY, PATH_BOX_WIDTH, PATH_BOX_HEIGHT);
-		g2d.drawRect(shiftX, shiftY, PATH_BOX_WIDTH, PATH_BOX_HEIGHT);
-
 		g2d.setStroke(new BasicStroke(2));
-
-		for(Point3D p: _path){
-			if (prevP != null){
-				Point3D p0 = _pathW2P.w2s(prevP);
-				Point3D p1 = _pathW2P.w2s(p);
-
-
-				g2d.drawLine(
-						shiftX + (int)(p0.x()),
-						shiftY + (int)(p0.y()),
-						shiftX + (int)(p1.x()),
-						shiftY + (int)(p1.y())
-						);
-			}
-			prevP = p;
+		
+		for(int i = 0; i < _path.size() - 1; i++) {
+			Point3D p1 = _path.get(i);
+			Point3D p2 = _path.get(i + 1);
+			
+			g2d.drawLine((int)(p1.x + 0.5), (int)(p1.y + 0.5), (int)(p2.x + 0.5), (int)(p2.y + 0.5));
 		}
+	}
+	
+	
+	private void setMinAndMaxPoints(){
+		double minX = Double.MAX_VALUE;
+		double minY = Double.MAX_VALUE;
+		double minZ = 0;
+
+		double maxX = Double.MIN_VALUE;
+		double maxY = Double.MIN_VALUE;
+		double maxZ = Double.MIN_VALUE;
+		
+		for(int i = 0; i < _map.size(); i++) {
+			GIS_Light light = _map.at(i);
+			
+			Point3D center = light.getCenter();
+			Segment3D segment = light.get_seg();
+			Point3D seg1 = segment.p1_ref();
+			Point3D seg2 = segment.p2_ref();
+
+			//x
+			if (center.x() < minX)
+				minX = center.x();
+			if (seg1.x() < minX)
+				minX = seg1.x();
+			if (seg2.x() < minX)
+				minX = seg2.x();
+
+			if (center.x() > maxX)
+				maxX = center.x();
+			if (seg1.x() > maxX)
+				maxX = seg1.x();
+			if (seg2.x() > maxX)
+				maxX = seg2.x();
+
+			//y
+			if (center.y() < minY)
+				minY = center.y();
+			if (seg1.y() < minY)
+				minY = seg1.y();
+			if (seg2.y() < minY)
+				minY = seg2.y();
+
+			if (center.y() > maxY)
+				maxY = center.y();
+			if (seg1.y() > maxY)
+				maxY = seg1.y();
+			if (seg2.y() > maxY)
+				maxY = seg2.y();
+
+			//z			
+			if (center.z() > maxZ)
+				maxZ = center.z();
+			if (seg1.z() > maxZ)
+				maxZ = seg1.z();
+			if (seg2.z() > maxZ)
+				maxZ = seg2.z();
+		}
+
+		minX -= ROOM_OFFSET;
+		minY -= ROOM_OFFSET;
+
+		maxX += ROOM_OFFSET;
+		maxY += ROOM_OFFSET;
+
+		min = new Point3D(minX, minY, minZ);
+		max = new Point3D(maxX, maxY, maxZ);
 	}
 }
 
